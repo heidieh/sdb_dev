@@ -900,7 +900,8 @@ function createCharts(data) {
 	    .margins({top: 5, left: 10, right: 10, bottom: 40})
 	    .dimension(teamDim)
 	    .group(teamGroup)
-	    .colors(d3.scale.category10())
+	    .colors(['steelblue'])
+	    //.colors(d3.scaleOrdinal())
 	    .label(function (d){
 	    	//console.log(d);
 	        return d.key;
