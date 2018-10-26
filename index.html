@@ -20,6 +20,7 @@
 		}		
 	}
 	#tableSDB{
+		padding-top: 0.5rem;
 		width: 100%;
 		border-spacing: 0px;
 	}
@@ -33,16 +34,19 @@
 		color: white;
 	}
 	.button_list {
-		/*margin-top: 1rem;*/
+		margin-top: 0.5rem;
+		margin-left: 1rem;
+		float: left;
+		width: 30%;
 	}
 	.button {
 	    cursor: pointer;
 	    /*display: block;*/
 	    width: 15rem;
-	    margin-top: 0.4rem;
+	    margin-top: 0.8rem;
 	    margin-left: 1rem;
 	    border-radius: 0.4rem;
-	    height: 1.5rem;
+	    height: 3rem;
 	}
 	.button:hover {
 	    background-color: #6280bf;
@@ -50,9 +54,10 @@
 	}
 
 	#dc-team-chart {
-		margin-left: 4rem;
-		margin-bottom: 2rem;
-		margin-right: 8rem;
+		width: 50%;
+		float: left;
+		margin-left: 3rem;
+		margin-right: 2rem;
 	}
 	.dc-chart g.row text {
 	    fill: black;
@@ -70,20 +75,21 @@
 </head>
 
 <body>
-	<h2>SDB/EDS - Dashboard des Alertes et des Activités</h2>
-
+	<h2>SDB/EDS - Dashboard des Alertes et des Activités</h2> 
     
-    <div id='dc-team-chart' class='row'>
-      	<p class='instruction'>Cliquez sur les équipes pour sélectionner les données:</p>
-    </div>
+	<div class="row">
+		<div class='button_list'>
+			<button class='button' onclick="exportData('xlsx','all_today');">Toutes données d'aujourd'hui - XLSX</button>
+			<button class='button' onclick="exportData('xlsx','all_yesterday');">Toutes données d'hier - XLSX</button>
+			<button class='button' onclick="exportData('xlsx','selected');">Toutes les données sélectionnées - XLSX<small><br/><i>(toutes les données indiquées dans le tableau ci-dessous)</i></small></button>
+		</div>
 
-	<div class='button_list'>
-		<button class='button' onclick="exportData('xlsx','all_today');">Toutes données d'aujourd'hui - XLSX</button>
-		<button class='button' onclick="exportData('xlsx','all_yesterday');">Toutes données d'hier - XLSX</button>
-		<button class='button' onclick="exportData('xlsx','selected');">Toutes les données - XLSX</button>
+		<div id='dc-team-chart' class='row'>
+	      	<p class='instruction'>Cliquez sur les équipes pour sélectionner les données:</p>
+	    </div>
 	</div>
 
-	<h2>Tableau de données</h2>
+	<!-- <h2>Tableau de données</h2> -->
 
 	<div>
 		<table id="tableSDB" style="font-size: 10px"></table>
