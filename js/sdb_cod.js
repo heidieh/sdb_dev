@@ -99,6 +99,7 @@ function processKoboSDBdata(sdbData) {
 	var temp;
 	var datetime;
 	var circumstancesOfFailure, circ;
+
 	
 	//var kobo_fieldnames = getKoboFieldnames();
 	//console.log('Kobo fieldnames: ', kobo_fieldnames);
@@ -112,6 +113,13 @@ function processKoboSDBdata(sdbData) {
 
 		//FIRST ADD KOBO FIELDS NEEDED FOR PROCESSING ONLY, NOT FOR OUTPUT
 		temp['team_went/burial/status'] = record['team_went/burial/status'];
+		let temp_start = getFirstValidField('alert_new/datetime/date_alert&&datetime/date_alert', record);
+		if (temp_start.length > 0) {
+			temp['start'] = new Date(parseInt(temp_start[0].substr(0,4)), parseInt(temp_start[0].substr(5,7))-1, parseInt(temp_start[0].substr(8,10)));	
+		} else {
+			temp['start'] = '';
+		};
+		//console.log(temp['start']);
 
 		//for each excelHeading (corresponds to each row defined in cfg_excelHeadings.csv - i.e. all kobo fieldnames and calculated fields)
 		for (var h in excelHeadings) {
@@ -161,6 +169,7 @@ function processKoboSDBdata(sdbData) {
 							if (temp[new_keyname]==blank) temp[new_keyname]='Not available'; break;
 						case 'epiweek_num': temp[new_keyname] = getEpiweekNum(temp['alert_new/datetime/date_alert&&datetime/date_alert']); break;
 						case 'result_type': var result = getResultType(temp);
+											//console.log(new_keyname, result)
 												temp[new_keyname] = result; break;
 						case 'status_type': temp[new_keyname] = getStatusType(temp['calc-result_type']); break;
 						default: temp[new_keyname] = '';
@@ -211,6 +220,9 @@ function processKoboSDBdata(sdbData) {
 						kobo_fieldused = excelHeadings[h].kobo_fieldname;
 						new_keyname = kobo_fieldused;
 						temp[new_keyname] = record[new_keyname];     		//copy original key and value over to temp object
+						if (new_keyname=='team') {
+							temp[new_keyname] = formatTeamNames(record[new_keyname]);   
+						}
 						//console.log(new_keyname, temp[new_keyname], typeof(temp[new_keyname]));
 					} catch(err) {
 				    	console.log('Error processing SDB data: ', err)
@@ -273,18 +285,24 @@ function processKoboSDBdata(sdbData) {
 	return processedData;
 }
 
+
+function formatTeamNames(str) {   //replace underscores with space, then capitalise each word
+   str = str.replace(/\_/g,' ');
+   return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+};
+
+
 function createSummarySDBTable(sdbData) {
 	//console.log("currentData: ", sdbData)
 	var html = "";
 	var sdbHtml = "";
 	$('#tableSDB').html('');
-
 	//write table headings
-	html += '<tr bgcolor="#cfdff9">';
+	html += '<thead bgcolor="#cfdff9">';
 	for (var mainHead in mainHeadings) {
 		html += '<th>' + mainHeadings[mainHead] + '</th>'; 
 	}
-	html += '</tr>';
+	html += '</thead>';
 	$('#tableSDB').append(html);
 
 	sdbData = reverseSortByKey(sdbData, 'alert_new/datetime/date_alert&&datetime/date_alert');
@@ -326,12 +344,10 @@ function getSubHeadingHtml(mainhead, record) {
 
 			if (excelHeadings[i]['kobo_fieldname'] == 'team_went/burial/begin_group_xxxxxxxx/activity_date') {
 				//console.log('return ', record[r])
-				if (record[excelHeadings[i].kobo_fieldname] == blank) {
-					var date_output = 'Not available';
-				} else {
-					var date_output = formatDate(record[excelHeadings[i].kobo_fieldname],'screen');
-				}	
-				html += '<i>' + excelHeadings[i]['excel_heading'] + ': </i><br><b>' + date_output + '</b><br>';		
+				var date_output, if_new_line;
+				record[excelHeadings[i].kobo_fieldname] == blank? date_output = 'Not available' : date_output = formatDate(record[excelHeadings[i].kobo_fieldname],'screen');
+				excelHeadings[i].dashboard_category == 'start'? if_new_line = '<br>' : if_new_line = '';
+				html += '<i>' + excelHeadings[i]['excel_heading'] + ': </i>' + if_new_line + '<b>' + date_output + '</b><br>';		
 
 
 			} else if (excelHeadings[i].processing_options.substr(0,15) == 'multiple_choice') {
@@ -440,14 +456,15 @@ function formatDateTime(date, format) {
 function formatDate(date, format) {
 	//console.log(date, format);
 	let months = ["Jan", "Fev", "Mar", "Avr", "Mai", "Juin", "Juil", "Aout", "Sep", "Oct", "Nov", "Dec"];
-	let date_parsed = new Date(parseInt(date.substr(0,4)), parseInt(date.substr(5,7)), parseInt(date.substr(8,10)));
+	let date_parsed = new Date(parseInt(date.substr(0,4)), parseInt(date.substr(5,7))-1, parseInt(date.substr(8,10)));
 	let newdate;
 
 	if (format=='csv') {
-		newdate = date_parsed.getDate() + '/' + date_parsed.getMonth()-1 + '/' + date_parsed.getFullYear();
-		console.log('for csv: ', newdate)
+		newdate = date_parsed.getDate() + '/' + date_parsed.getMonth() + '/' + date_parsed.getFullYear();
+		//console.log(date, newdate)
 	} else if (format=='screen') {
-		newdate = date_parsed.getDate() + '-' + months[date_parsed.getMonth()-1] + '-' + date_parsed.getFullYear();
+		newdate = date_parsed.getDate() + '-' + months[date_parsed.getMonth()] + '-' + date_parsed.getFullYear();
+		//console.log(date, newdate)
 	};
 
 	return newdate;
@@ -779,14 +796,17 @@ function exportData(fileType,option) {
 	var rows = [];
 	var row = [];
 	var has_rows = false;
-	const headings = excelHeadings.map(x => x['excel_heading']);
+	
 	//console.log(headings);
 
 	switch(option) {
-		case 'selected': 		filename = 'SDB_data_all__' + now_fname; break;
+		/*case 'selected': 		filename = 'SDB_data_all__' + now_fname; break;
 		case 'all_today': 		filename = 'SDB_data_today__' + now_fname; break;
 		case 'all_yesterday': 	filename = 'SDB_data_yesterday__' + now_fname; break;
-		default: filename = 'SDB_data_' + now_fname + '.xls'; 
+		default: filename = 'SDB_data_' + now_fname + '.xls'; */
+		case 'dshbrd_view': 		filename = 'SDB_donnees_dshbrd__' + now_fname; break;
+		case 'tbl_view': 		filename = 'SDB_donnees_tbl__' + now_fname; break;
+		default: filename = 'SDB_donnees_' + now_fname + '.xls'; 
 	}
 	if (fileType=='csv') {
 		filename = filename + '.csv';
@@ -794,9 +814,12 @@ function exportData(fileType,option) {
     	filename = filename + '.xlsx';
     }
 	
-	rows.push(headings)
+	
 
-	if (option == 'selected') {
+	if (option == 'dshbrd_view') {
+
+		const headings = excelHeadings.map(x => x['excel_heading']);
+		rows.push(headings)
 
 		//console.log('currentData: ', currentData)
 		currentData = reverseSortByKey(currentData, 'alert_new/datetime/date_alert&&datetime/date_alert');
@@ -836,7 +859,67 @@ function exportData(fileType,option) {
 		}
 
 
-    } else {
+    } else if (option == 'tbl_view') {
+
+    	//tableToExcel('#tableSDB', 'testexport')
+    	//downloadTbl();
+
+    	//console.log('currentData: ', currentData)
+		currentData = reverseSortByKey(currentData, 'alert_new/datetime/date_alert&&datetime/date_alert');
+
+
+		for (var mainHead in mainHeadings) {
+			row.push(mainHeadings[mainHead]); 
+		}
+		rows.push(row);
+
+    	for (var i = 0; i <= currentData.length-1; i++) {
+    		//console.log(i, currentData[i])
+ 	
+    		row = []
+			var endtime = formatDateTime(currentData[i]['end'],'csv')[0];
+			
+			for (var mainHead in mainHeadings) {
+				var html_row = getSubHeadingHtml(mainHead, currentData[i]);
+				var row_str = html_row.replace(/<[^>]*>/g, "");
+				//row_str = 'xxx\r' + row_str;
+				row.push(row_str);
+			}
+			rows.push(row)
+
+	        /*for (var j = 0; j < excelHeadings.length; j++) {
+	        	
+	        	if (excelHeadings[j].excel_heading!='') {  //temporary hackfix - because github keeps adding blank row to end of csv
+			
+		        	if (excelHeadings[j].processing_options.substr(0,5)=='calc-') {
+		        		//console.log(excelHeadings[j].processing_options, data[i][excelHeadings[j].processing_options]);
+		        		row.push(currentData[i][excelHeadings[j].processing_options]);
+		        	} else if (excelHeadings[j].excel_heading=='Fin de reponse') {
+		        		row.push(endtime);
+		        	} else {
+		        		row.push(currentData[i][excelHeadings[j].kobo_fieldname])
+		        	}
+		        }
+	            
+	        }*/
+	        //row.push('XXX')
+	        has_rows = true;
+	        if (fileType=='csv') {
+				rows.push(row.join(","));
+		    } else if (fileType=='xlsx') {
+		    	rows.push(row);
+		    }
+
+	    }
+
+	   /* if (!(has_rows)) {
+			rows.push(['Aucune donnée n\'a été sélectionnée'])
+		}*/
+
+    }
+
+
+    /*else {
 
     	data = reverseSortByKey(data, 'alert_new/datetime/date_alert&&datetime/date_alert');
 
@@ -872,17 +955,18 @@ function exportData(fileType,option) {
 
 			}
 
-    	}
+    	}*/
 
-    	if (!(has_rows)) {
-    		if (option=='all_today') {
+    	//if (!(has_rows)) {
+    		/*if (option=='all_today') {
 				rows.push(['Aucune donnée disponible pour aujourd\'hui'])
 			} else if (option=='all_yesterday') {
 				rows.push(['Aucune donnée disponible pour hier'])
-			}
-		}
+			}*/
+			//rows.push(['Aucune donnée disponible'])
+		//}
 
-    }
+    //}
 
     if (fileType=='csv') {
 		download_csv(rows.join("\n"), filename);
@@ -895,6 +979,41 @@ function exportData(fileType,option) {
 
 }
 
+/*var tableToExcel = (function () {
+        var uri = 'data:application/vnd.ms-excel;base64,',
+            template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>',
+            base64 = function (s) {
+                return window.btoa(unescape(encodeURIComponent(s)))
+            }, format = function (s, c) {
+                return s.replace(/{(\w+)}/g, function (m, p) {
+                    return c[p];
+                })
+            }
+        
+        return function (table, name, filename) {
+        	console.log(table, name, filename)
+            if (!table.nodeType) table = document.getElementById(table)
+            var ctx = {
+                worksheet: name || 'Worksheet',
+                table: table.innerHTML
+            }
+
+            document.getElementById("dlink").href = uri + base64(format(template, ctx));
+            document.getElementById("dlink").download = filename;
+            document.getElementById("dlink").traget = "_blank";
+            document.getElementById("dlink").click();
+
+        }
+    })();
+
+function downloadTbl(){
+    $(document).find('tfoot').remove();
+    //var name = document.getElementById("name").innerHTML;
+    var name = 'heidi'
+    tableToExcel('tableSDB', 'Sheet 1', name+'.xls')
+    //setTimeout("window.location.reload()",0.0000001);
+
+}*/
 
 
 function download_csv(csv, filename) {
@@ -938,10 +1057,25 @@ function createCharts(data) {
 	var teamChart = dc.rowChart("#dc-team-chart");
 	var teamDim = cf.dimension(function (d) { return d['team'] });
 	var teamGroup = teamDim.group();
+	var dateChart = dc.compositeChart("#dc-date-chart");
+	var dateDim = cf.dimension(function (d) {if (d['start']!='') {/*console.log(d['start']);*/ return d['start'] }});
+	var dateGroup = dateDim.group();
+	var dateExtent = d3.extent(data.map(x=>x['start']));
+	var resultChart = dc.pieChart("#dc-result-chart");
+	var resultDim = cf.dimension(function (d) { return d['calc-result_type'] });
+	var resultGroup = resultDim.group();
+	
+	var dateExtent = d3.extent(data.reduce(function(result, d) {
+	    if (d['start'] != "") {
+	      result.push(d['start']);
+	    }
+	    return result;
+	}, []));
+	//console.log('dateExtent: ', dateExtent);
 
-	//row chart teams
+	//ROW CHART - TEAMS
   	teamChart.width(300)
-	    .height(200)
+	    .height(160)
 	    .margins({top: 5, left: 10, right: 10, bottom: 40})
 	    .dimension(teamDim)
 	    .group(teamGroup)
@@ -955,6 +1089,60 @@ function createCharts(data) {
 	    .ordering(function(d) { return - d.value })
 	    .elasticX(true)
 	    .xAxis().ticks(4);
+
+	dateChart
+		.width(320)
+	    .height(160)
+	    .x(d3.scaleTime().domain(dateExtent))
+	    .yAxisLabel("Nombre de Réponses")
+	    //.clipPadding(10)
+	    .dimension(dateDim)
+	    .group(dateGroup)
+	    .compose([
+	        dc.barChart(dateChart)
+	            .dimension(dateDim)
+	            .group(dateGroup)
+	            .valueAccessor(function (d) {return d.value; })
+	            .ordinalColors(['#c58cc5'])
+	            //.barPadding(1)
+	            //.round(d3.time.day.round)
+			    // define x axis units
+			    //.xUnits(d3.time.days)
+			    // (optional) whether bar should be center to its x value, :default=false
+			    //.centerBar(true)
+			    //.barPadding(15)
+			    //.outerPadding(14)
+			    // (optional) set gap between bars manually in px, :default=2
+			    //.barGap(1)
+			    //.gap(1)
+	    ]);
+
+	    /*bars.enter().append("rect")
+          .attr("class", "bars")
+          .attr("y", 0)
+          .attr("height", height)
+          .attr("x", function(d, i) { return i*(width/buttonValue.n); })
+          .attr("width", width/buttonValue.n)
+          .style("fill", function(d, i) { return colorScale(i); });*/
+
+	resultChart
+	    .width(180)
+	    .height(160)
+	    .slicesCap(4)
+	    .ordinalColors(['#a6cee3', '#b2df8a', '#fb9a99','#ff7f00'])
+	    .innerRadius(10)
+	    .dimension(resultDim)
+	    .group(resultGroup) // by default, pie charts will use group.key as the label
+	    .renderLabel(true)
+	    .label(function (d) {
+	        //console.log(d);
+	        if (d.key=='X') {
+	        	return 'X (pas connu)';
+	        } else {
+	        	return d.key;
+	        }
+	        
+	    });
 
 	dc.renderAll();
 
@@ -972,6 +1160,16 @@ function createCharts(data) {
         .attr("x", teamChart.width()/2)
         .attr("y", teamChart.height()-6)
         .text('Nombre de Réponses');
+	
+    dateChart.on("filtered", function (chart) {
+    	currentData = dateDim.top(Infinity)
+        createSummarySDBTable(currentData);
+    })
+
+    dateChart.on("filtered", function (chart) {
+    	currentData = resultDim.top(Infinity)
+        createSummarySDBTable(currentData);
+    })
 	
 
 }
