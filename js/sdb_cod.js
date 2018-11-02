@@ -1139,9 +1139,9 @@ function createCharts(data) {
 
 
 	//ROW CHART - TEAMS
-  	teamChart.width(300)
+  	teamChart.width(260)
 	    .height(160)
-	    .margins({top: 5, left: 10, right: 10, bottom: 40})
+	    //.margins({top: 5, left: 10, right: 10, bottom: 40})
 	    .dimension(teamDim)
 	    .group(teamGroup)
 	    .colors(['steelblue'])
@@ -1156,7 +1156,7 @@ function createCharts(data) {
 	    .xAxis().ticks(4);
 
 	dateChart
-		.width(320)
+		.width(360)
 	    .height(160)
 	    .x(d3.scaleTime().domain(dateExtentPlus))
 	    .yAxisLabel("Nombre de Réponses")
@@ -1184,12 +1184,13 @@ function createCharts(data) {
 
 
 	resultChart
-	    .width(400)
-	    .height(140)
-	    .cx(100)
-	    .cy(70)
-	    .ordinalColors(['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f','#e5c494','#b3b3b3'])
+	    .width(295)
+	    .height(160)
+	    .cx(60)
+	    .cy(80)
+	    .radius(60)
 	    .innerRadius(10)
+	    .ordinalColors(['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f','#e5c494','#b3b3b3'])
 	    .dimension(resultDim)
 	    .group(resultGroup) 
 	    .renderLabel(false)
@@ -1202,18 +1203,12 @@ function createCharts(data) {
 	        }
 	        
 	    })*/
-	    .legend(dc.legend().x(200).y(20).itemHeight(13).gap(2));
+	    .legend(dc.legend().x(130).y(40).itemHeight(13).gap(2));
 
 
 
 	dc.renderAll();
 
-    teamChart.on("filtered", function (chart) {
-         currentData = teamDim.top(Infinity)
-         createSummarySDBTable(currentData);
-    })
-
-    //add x-axis title
     teamChart.svg()
         .append("text")
         //.attr("class", "x-axis-label")
@@ -1221,7 +1216,14 @@ function createCharts(data) {
         .attr("x", teamChart.width()/2)
         .attr("y", teamChart.height()-6)
         .text('Nombre de Réponses');
-	
+
+
+    teamChart.on("filtered", function (chart) {
+         currentData = teamDim.top(Infinity)
+         createSummarySDBTable(currentData);
+    })
+
+
     dateChart.on("filtered", function (chart) {
     	var filters = chart.filters();
 	    if (filters.length) {
@@ -1229,7 +1231,8 @@ function createCharts(data) {
 	        //console.log('filtered date range:', range[0], range[1]);
 	        let minDate = deepCopyDate(range[0]);
 	        if (!(sameDay(range[0],dateExtent[0]))) {  
-	        	minDate.setHours(minDate.getHours()+24);
+	        	//minDate.setHours(minDate.getHours()+24);
+	        	minDate.setDate(minDate.getDate()+1);
 	        };
 	        if (sameDay(minDate, range[1])) {
 	        	$('#dates_selected').html('<i>' + formatDateTime(minDate,'screen')[0] + '</i>');
@@ -1243,6 +1246,7 @@ function createCharts(data) {
     	currentData = dateDim.top(Infinity);
         createSummarySDBTable(currentData);
     })
+
 
     resultChart.on("filtered", function (chart) {
     	currentData = resultDim.top(Infinity)
