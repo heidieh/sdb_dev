@@ -1140,7 +1140,7 @@ function createCharts(data) {
 
 	//ROW CHART - TEAMS
   	teamChart.width(260)
-	    .height(160)
+	    .height(170)
 	    //.margins({top: 5, left: 10, right: 10, bottom: 40})
 	    .dimension(teamDim)
 	    .group(teamGroup)
@@ -1213,8 +1213,9 @@ function createCharts(data) {
         .append("text")
         //.attr("class", "x-axis-label")
         .attr("text-anchor", "middle")
-        .attr("x", teamChart.width()/2)
-        .attr("y", teamChart.height()-6)
+        .attr("font-size", "12px")
+        .attr("x", 130)
+        .attr("y", 168)
         .text('Nombre de Réponses');
 
 
