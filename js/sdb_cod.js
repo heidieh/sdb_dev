@@ -112,6 +112,7 @@ function processKoboSDBdata(sdbData) {
 
 
 		//FIRST ADD KOBO FIELDS NEEDED FOR PROCESSING ONLY, NOT FOR OUTPUT
+		//HEIDI!!!! CHECK WHETHER SOMETIMES NEED TO LOOK FOR THE 'START' FIELD IN KOBO
 		temp['team_went/burial/status'] = record['team_went/burial/status'];
 		let temp_start = getFirstValidField('alert_new/datetime/date_alert&&datetime/date_alert', record);
 		if (temp_start.length > 0) {
@@ -719,35 +720,63 @@ function getResultType(rec) {
 	//console.log(rec)
 	var result = 'X';
 
-	if (rec['type'] != 'disinfection') {
-		//console.log(rec['team_went/burial/status'])
-		if ((rec['team_went/burial/status'] == 'secured_buried') || (rec['team_went/burial/status'] == 'secured_negative_sample')) {
-			result = 'Succes';
-		} else if (rec['team_went/burial/status'] == 'other') {
-			if (rec['team_went/burial/reason'] != '') {
+	if (rec['type'] == 'disinfection') {
+		result = 'Désinfection seulement';
+
+	} else if (!(rec.hasOwnProperty('team_went/burial/status'))) {
+		result = 'Status field doesn\'t exist';
+		console.log('Status field doesn\'t exist');
+	} else {
+
+		if (['secured_buried', 'secured_negative_sample', 'Succes'].indexOf(rec['team_went/burial/status']) != -1 ){
+				result = 'Succes';
+
+		} else if ((rec['team_went/burial/status'] == 'Incomplet') || (rec['team_went/burial/status'] == 'pending')){
+			result = 'Incomplet';
+
+		} else if ((rec['team_went/burial/status'] == 'other') || (rec['team_went/burial/status'] == 'autre')) {
+			if (!(rec.hasOwnProperty('team_went/burial/reason'))) {
+				result = 'Other - reason field doesn\'t exist';   //happens frequently
+				//console.log('Other - reason field doesn\'t exist');
+			} else if ((rec['team_went/burial/reason'] == '') || (rec['team_went/burial/reason'] == blank)) {
+				result = 'Other - reason field blank'; 
+				//console.log('Other - reason field blank');
+			} else if (rec['team_went/burial/reason'] != '') {
+				//console.log(rec['team_went/burial/status'], rec['team_went/burial/reason'])
 				result = 'Échec';
-			} 
+			} else {
+				console.log('Shouldn\'t be an output here');
+			}
+			
 		} else if ((rec['team_went/burial/status'] == '') || (rec['team_went/burial/status'] == blank)) {
+			console.log('!!! BLANK');
 			if (rec['alert_new/group_response/action_taken&&group_response/action_taken']== 'sent_civil_protection') {
 				result = 'Alerte envoyée à la protection civile';
 			} else if (rec['alert_new/group_response/action_taken&&group_response/action_taken']== 'not_responded') {
 				result = 'Échec';
-			};
+			} else {
+				result = 'X'
+			}
+
+		} else {
+			result = 'Status field undefined';
+			console.log('Status field undefined: ', rec['team_went/burial/status']);
 		}
-	}
+	} 
+
 	//Note: Cannot program the final logic dependant on the input of '1 day' because this has been manually input by someone
 
 	//LOGIC by Alex:
 	/* First, use field 'type' to filter out any disinfections as these don't go into the database
-	primary kobo field used is 'status'
+	Primary kobo field used is 'status'
 		- 'secured_buried' = Succes
 		- 'secured_negative_sample' = Succes
-		- 'other' = probably Échec, but i check the reason just to be sure
-	check 'reason' if populated (FYI this is a select multiple question, not free text)
-	if 'status' is blank I will check 'action_taken'
+		- 'other' = probably Échec, but check the reason just to be sure
+	Check 'reason' if populated (FYI this is a select multiple question, not free text)
+	If 'status' is blank I will check 'action_taken'
 		- 'sent_civil_protection' = Alerte envoyée à la protection civile
 		- 'not_responded' = Échec
-	finally, to check whether the burial activity (successfully or not) happened on the same day as the alert or not I use the calculated field in column CK 'Time between pre alert and leaving', looking only at those records that record '1 day' i will change
+	Finally, to check whether the burial activity (successfully or not) happened on the same day as the alert or not I use the calculated field in column CK 'Time between pre alert and leaving', looking only at those records that record '1 day' i will change
 		- 'Succes' = 'Alert d'hier complete'
 		- 'Échec' = 'Attendant pas complete'*/
 
@@ -1125,16 +1154,22 @@ function createCharts(data) {
           .attr("width", width/buttonValue.n)
           .style("fill", function(d, i) { return colorScale(i); });*/
 
+
 	resultChart
-	    .width(180)
-	    .height(160)
-	    .slicesCap(4)
-	    .ordinalColors(['#a6cee3', '#b2df8a', '#fb9a99','#ff7f00'])
+	    //.width(width + margin.right)
+	    //.height(height)
+	    .width(400)
+	    .height(140)
+	    .cx(100)
+	    .cy(70)
+	    //.attr('transform','translate(100,100)')
+	    //.slicesCap(4)
+	    .ordinalColors(['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f','#e5c494','#b3b3b3'])
 	    .innerRadius(10)
 	    .dimension(resultDim)
 	    .group(resultGroup) // by default, pie charts will use group.key as the label
-	    .renderLabel(true)
-	    .label(function (d) {
+	    .renderLabel(false)
+	    /*.label(function (d) {
 	        //console.log(d);
 	        if (d.key=='X') {
 	        	return 'X (pas connu)';
@@ -1142,7 +1177,10 @@ function createCharts(data) {
 	        	return d.key;
 	        }
 	        
-	    });
+	    })*/
+	    .legend(dc.legend().x(200).y(20).itemHeight(13).gap(2));
+
+
 
 	dc.renderAll();
 
@@ -1162,11 +1200,18 @@ function createCharts(data) {
         .text('Nombre de Réponses');
 	
     dateChart.on("filtered", function (chart) {
-    	currentData = dateDim.top(Infinity)
+    	var filters = chart.filters();
+	    if (filters.length) {
+	        var range = filters[0];
+	        console.log('range:', range[0], range[1]);
+	    } else {
+	        console.log('no filters');
+	    };
+    	currentData = dateDim.top(Infinity);
         createSummarySDBTable(currentData);
     })
 
-    dateChart.on("filtered", function (chart) {
+    resultChart.on("filtered", function (chart) {
     	currentData = resultDim.top(Infinity)
         createSummarySDBTable(currentData);
     })
