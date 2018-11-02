@@ -2,7 +2,7 @@
 Équipe du formulaire,newalert,team,
 Équipe autre,newalert,,
 Type d'alerte,newalert,type,
-Alert received,newalert,alert_new/datetime/date_alert&&datetime/date_alert,selectFirstValid
+Alert received,newalert,alert_new/datetime/date_alert&&datetime/date_alert&&start,selectFirstValid
 Time of pre-alert,newalert,alert_new/datetime/time_pre_alert&&datetime/time_pre_alert,selectFirstValid&time
 Time all info received,newalert,alert_new/datetime/time_all_info&&datetime/time_all_info,selectFirstValid&time
 Action prise,response,alert_new/group_response/action_taken&&group_response/action_taken,selectFirstValid
@@ -77,6 +77,7 @@ Commentaire (FR),other,team_went/comments&&comments,selectAllValid
 EPI Week,newalert,,calc-epiweek_num
 Résidence,other,,
 Status,response,,calc-status_type
+Alert received,start,alert_new/datetime/date_alert&&datetime/date_alert&&start,selectFirstValid
 Début de la reponse,start,team_went/burial/begin_group_xxxxxxxx/activity_date,teamSpec&date
 Heure de la reponse,start,team_went/burial/begin_group_xxxxxxxx/time_of_departure,teamSpec&time
 Sexe calcul,deceased,,calc-sex

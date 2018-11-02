@@ -112,15 +112,27 @@ function processKoboSDBdata(sdbData) {
 
 
 		//FIRST ADD KOBO FIELDS NEEDED FOR PROCESSING ONLY, NOT FOR OUTPUT
-		//HEIDI!!!! CHECK WHETHER SOMETIMES NEED TO LOOK FOR THE 'START' FIELD IN KOBO
 		temp['team_went/burial/status'] = record['team_went/burial/status'];
-		let temp_start = getFirstValidField('alert_new/datetime/date_alert&&datetime/date_alert', record);
-		if (temp_start.length > 0) {
-			temp['start'] = new Date(parseInt(temp_start[0].substr(0,4)), parseInt(temp_start[0].substr(5,7))-1, parseInt(temp_start[0].substr(8,10)));	
+
+		//CALCUALTE alert_received FIELD - USED BY DATE FILTERING CHART
+		let temp_alert_received = getFirstValidField('alert_new/datetime/date_alert&&datetime/date_alert&&start', record);
+		//console.log(temp_alert_received)
+		if (temp_alert_received.length > 0) {
+			/*if (temp_alert_received[1]=='start') {  //date type
+				temp['alert_received'] = new Date(parseInt(temp_alert_received[0].substr(0,4)), parseInt(temp_alert_received[0].substr(5,7))-1, parseInt(temp_alert_received[0].substr(8,10)));
+				
+				console.log(temp_alert_received, temp['alert_received'])
+				console.log(temp['alert_new/datetime/date_alert&&datetime/date_alert&&start'])
+				//temp['alert_new/datetime/date_alert&&datetime/date_alert&&start'] = temp['alert_received'];
+
+			} else {*/		//string type
+				temp['alert_received'] = new Date(parseInt(temp_alert_received[0].substr(0,4)), parseInt(temp_alert_received[0].substr(5,7))-1, parseInt(temp_alert_received[0].substr(8,10)));		
+			//}
 		} else {
-			temp['start'] = '';
+			//console.log('blank alert_received: ', temp['alert_received'], record)
+			temp['alert_received'] = '';
 		};
-		//console.log(temp['start']);
+		//console.log(temp['alert_received']);
 
 		//for each excelHeading (corresponds to each row defined in cfg_excelHeadings.csv - i.e. all kobo fieldnames and calculated fields)
 		for (var h in excelHeadings) {
@@ -166,9 +178,9 @@ function processKoboSDBdata(sdbData) {
 					switch (new_keyname.substr(5)) {	
 						case 'age_group': temp[new_keyname] = getAgeGroup(temp['group_deceased/age_of_deceased']); break;
 						case 'sex': temp[new_keyname] = getSexCalcul(temp['group_deceased/gender_of_deceased']); break;
-						case 'response_time': temp[new_keyname] = getResponseTime(temp['alert_new/datetime/date_alert&&datetime/date_alert'], temp['alert_new/datetime/time_pre_alert&&datetime/time_pre_alert'],temp['team_went/burial/begin_group_xxxxxxxx/activity_date'],temp['team_went/burial/begin_group_xxxxxxxx/time_of_departure']);
+						case 'response_time': temp[new_keyname] = getResponseTime(temp['alert_new/datetime/date_alert&&datetime/date_alert&&start'], temp['alert_new/datetime/time_pre_alert&&datetime/time_pre_alert'],temp['team_went/burial/begin_group_xxxxxxxx/activity_date'],temp['team_went/burial/begin_group_xxxxxxxx/time_of_departure']);
 							if (temp[new_keyname]==blank) temp[new_keyname]='Not available'; break;
-						case 'epiweek_num': temp[new_keyname] = getEpiweekNum(temp['alert_new/datetime/date_alert&&datetime/date_alert']); break;
+						case 'epiweek_num': temp[new_keyname] = getEpiweekNum(temp['alert_new/datetime/date_alert&&datetime/date_alert&&start']); break;
 						case 'result_type': var result = getResultType(temp);
 											//console.log(new_keyname, result)
 												temp[new_keyname] = result; break;
@@ -280,7 +292,7 @@ function processKoboSDBdata(sdbData) {
 	});
 
 	//order data by date (once date is parsed)
-	processedData = reverseSortByKey(processedData, 'alert_new/datetime/date_alert&&datetime/date_alert');
+	processedData = reverseSortByKey(processedData, 'alert_new/datetime/date_alert&&datetime/date_alert&&start');
 
 	console.log('processedData: ', processedData);
 	return processedData;
@@ -306,7 +318,7 @@ function createSummarySDBTable(sdbData) {
 	html += '</thead>';
 	$('#tableSDB').append(html);
 
-	sdbData = reverseSortByKey(sdbData, 'alert_new/datetime/date_alert&&datetime/date_alert');
+	sdbData = reverseSortByKey(sdbData, 'alert_new/datetime/date_alert&&datetime/date_alert&&start');
 
 	//write table rows
 	sdbData.forEach(function(d,i){
@@ -402,13 +414,19 @@ function getSubHeadingHtml(mainhead, record) {
 			} else if (record.hasOwnProperty(excelHeadings[i].kobo_fieldname)) {
 				//console.log('YES has key ', excelHeadings[i].kobo_fieldname, ': ', record[excelHeadings[i].kobo_fieldname])
 				//if ((record[excelHeadings[i].kobo_fieldname] == blank) || (record[excelHeadings[i].kobo_fieldname] == '-')) {
+				
 				if (record[excelHeadings[i].kobo_fieldname] == blank) {
 					//console.log('Not displayed to screen: ', excelHeadings[i].kobo_fieldname, excelHeadings[i].processing_options);
+				} else if (excelHeadings[i].kobo_fieldname=='alert_new/datetime/date_alert&&datetime/date_alert&&start') {
+					//console.log(excelHeadings[i].kobo_fieldname, record[excelHeadings[i].kobo_fieldname], record['alert_received'])
+					html += '<i>' + excelHeadings[i]['excel_heading'] + ': </i><br><b>' + formatDateTime(record['alert_received'],"screen")[0] + '</b><br>';
+				
 				} else if (record[excelHeadings[i].kobo_fieldname] instanceof Date) {
 					//console.log(excelHeadings[i].kobo_fieldname)
 					html += '<i>' + excelHeadings[i]['excel_heading'] + ': </i><br><b>' + formatDateTime(record[excelHeadings[i].kobo_fieldname],"screen")[0] + '<br>' + formatDateTime(record[excelHeadings[i].kobo_fieldname],"screen")[1] + '</b><br>';
 
 				} else {
+					//console.log(excelHeadings[i].kobo_fieldname)
 					html += '<i>' + excelHeadings[i]['excel_heading'] + ': </i><b>' + record[excelHeadings[i].kobo_fieldname] + '</b><br>';
 				}
 				
@@ -760,7 +778,7 @@ function getResultType(rec) {
 
 		} else {
 			result = 'Status field undefined';
-			console.log('Status field undefined: ', rec['team_went/burial/status']);
+			//console.log('Status field undefined: ', rec['team_went/burial/status']);
 		}
 	} 
 
@@ -851,14 +869,15 @@ function exportData(fileType,option) {
 		rows.push(headings)
 
 		//console.log('currentData: ', currentData)
-		currentData = reverseSortByKey(currentData, 'alert_new/datetime/date_alert&&datetime/date_alert');
+		currentData = reverseSortByKey(currentData, 'alert_new/datetime/date_alert&&datetime/date_alert&&start');
 
     	for (var i = 0; i <= currentData.length-1; i++) {
     		//console.log(i, currentData[i])
  	
     		row = []
 			var endtime = formatDateTime(currentData[i]['end'],'csv')[0];
-			
+			var starttime = formatDateTime(currentData[i]['alert_received'],'csv')[0];
+				
 	        for (var j = 0; j < excelHeadings.length; j++) {
 	        	
 	        	if (excelHeadings[j].excel_heading!='') {  //temporary hackfix - because github keeps adding blank row to end of csv
@@ -868,6 +887,8 @@ function exportData(fileType,option) {
 		        		row.push(currentData[i][excelHeadings[j].processing_options]);
 		        	} else if (excelHeadings[j].excel_heading=='Fin de reponse') {
 		        		row.push(endtime);
+		        	} else if (excelHeadings[j].excel_heading=='Alert received') {
+		        		row.push(starttime);
 		        	} else {
 		        		row.push(currentData[i][excelHeadings[j].kobo_fieldname])
 		        	}
@@ -894,7 +915,7 @@ function exportData(fileType,option) {
     	//downloadTbl();
 
     	//console.log('currentData: ', currentData)
-		currentData = reverseSortByKey(currentData, 'alert_new/datetime/date_alert&&datetime/date_alert');
+		currentData = reverseSortByKey(currentData, 'alert_new/datetime/date_alert&&datetime/date_alert&&start');
 
 
 		for (var mainHead in mainHeadings) {
@@ -907,6 +928,7 @@ function exportData(fileType,option) {
  	
     		row = []
 			var endtime = formatDateTime(currentData[i]['end'],'csv')[0];
+			var starttime = formatDateTime(currentData[i]['alert_received'],'csv')[0];
 			
 			for (var mainHead in mainHeadings) {
 				var html_row = getSubHeadingHtml(mainHead, currentData[i]);
@@ -950,7 +972,7 @@ function exportData(fileType,option) {
 
     /*else {
 
-    	data = reverseSortByKey(data, 'alert_new/datetime/date_alert&&datetime/date_alert');
+    	data = reverseSortByKey(data, 'alert_new/datetime/date_alert&&datetime/date_alert&&start');
 
     	for (var i = 0; i <= data.length-1; i++) {
     		//console.log(i, data[i])
@@ -1080,6 +1102,10 @@ function download_xlsx(rows, filename) {
        
 }
 
+function deepCopyDate(date_in) {
+	return new Date(date_in.getFullYear(), date_in.getMonth(), date_in.getDate());
+}
+
 
 function createCharts(data) {
 	var cf = crossfilter(data);
@@ -1087,20 +1113,30 @@ function createCharts(data) {
 	var teamDim = cf.dimension(function (d) { return d['team'] });
 	var teamGroup = teamDim.group();
 	var dateChart = dc.compositeChart("#dc-date-chart");
-	var dateDim = cf.dimension(function (d) {if (d['start']!='') {/*console.log(d['start']);*/ return d['start'] }});
+	var dateDim = cf.dimension(function (d) {if (d['alert_received']!='') {/*console.log(d['alert_received']);*/ return d['alert_received'] }});
 	var dateGroup = dateDim.group();
-	var dateExtent = d3.extent(data.map(x=>x['start']));
+	var dateExtent = d3.extent(data.map(x=>x['alert_received']));
 	var resultChart = dc.pieChart("#dc-result-chart");
 	var resultDim = cf.dimension(function (d) { return d['calc-result_type'] });
 	var resultGroup = resultDim.group();
 	
 	var dateExtent = d3.extent(data.reduce(function(result, d) {
-	    if (d['start'] != "") {
-	      result.push(d['start']);
+	    if (d['alert_received'] != "") {
+	      result.push(d['alert_received']);
 	    }
 	    return result;
 	}, []));
 	//console.log('dateExtent: ', dateExtent);
+
+	var dateExtentPlus = []; 
+	dateExtentPlus[0] = deepCopyDate(dateExtent[0])
+	dateExtentPlus[1] = deepCopyDate(dateExtent[1])
+	//dateExtentPlus[0].setHours(dateExtentPlus[0].getHours());
+	dateExtentPlus[1].setHours(dateExtentPlus[1].getHours()+23);
+	//console.log('dateExtent: ', dateExtent);
+	//console.log('dateExtent+: ', dateExtentPlus);
+	$('#dates_selected').html('<i>' + formatDateTime(dateExtent[0],'screen')[0] + ' - ' + formatDateTime(dateExtent[1],'screen')[0] + '</i>')
+
 
 	//ROW CHART - TEAMS
   	teamChart.width(300)
@@ -1122,7 +1158,7 @@ function createCharts(data) {
 	dateChart
 		.width(320)
 	    .height(160)
-	    .x(d3.scaleTime().domain(dateExtent))
+	    .x(d3.scaleTime().domain(dateExtentPlus))
 	    .yAxisLabel("Nombre de Réponses")
 	    //.clipPadding(10)
 	    .dimension(dateDim)
@@ -1146,28 +1182,16 @@ function createCharts(data) {
 			    //.gap(1)
 	    ]);
 
-	    /*bars.enter().append("rect")
-          .attr("class", "bars")
-          .attr("y", 0)
-          .attr("height", height)
-          .attr("x", function(d, i) { return i*(width/buttonValue.n); })
-          .attr("width", width/buttonValue.n)
-          .style("fill", function(d, i) { return colorScale(i); });*/
-
 
 	resultChart
-	    //.width(width + margin.right)
-	    //.height(height)
 	    .width(400)
 	    .height(140)
 	    .cx(100)
 	    .cy(70)
-	    //.attr('transform','translate(100,100)')
-	    //.slicesCap(4)
 	    .ordinalColors(['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f','#e5c494','#b3b3b3'])
 	    .innerRadius(10)
 	    .dimension(resultDim)
-	    .group(resultGroup) // by default, pie charts will use group.key as the label
+	    .group(resultGroup) 
 	    .renderLabel(false)
 	    /*.label(function (d) {
 	        //console.log(d);
@@ -1185,7 +1209,6 @@ function createCharts(data) {
 	dc.renderAll();
 
     teamChart.on("filtered", function (chart) {
-         //console.log(teamDim.top(Infinity));
          currentData = teamDim.top(Infinity)
          createSummarySDBTable(currentData);
     })
@@ -1203,9 +1226,19 @@ function createCharts(data) {
     	var filters = chart.filters();
 	    if (filters.length) {
 	        var range = filters[0];
-	        console.log('range:', range[0], range[1]);
+	        //console.log('filtered date range:', range[0], range[1]);
+	        let minDate = deepCopyDate(range[0]);
+	        if (!(sameDay(range[0],dateExtent[0]))) {  
+	        	minDate.setHours(minDate.getHours()+24);
+	        };
+	        if (sameDay(minDate, range[1])) {
+	        	$('#dates_selected').html('<i>' + formatDateTime(minDate,'screen')[0] + '</i>');
+	        } else {
+	        	$('#dates_selected').html('<i>' + formatDateTime(minDate,'screen')[0] + ' - ' + formatDateTime(range[1],'screen')[0] + '</i>');
+	        }	        
 	    } else {
-	        console.log('no filters');
+	    	$('#dates_selected').html('<i>' + formatDateTime(dateExtent[0],'screen')[0] + ' - ' + formatDateTime(dateExtent[1],'screen')[0] + '</i>')
+	        //console.log('No filters (',dateExtent[0],dateExtent[1],')');
 	    };
     	currentData = dateDim.top(Infinity);
         createSummarySDBTable(currentData);
