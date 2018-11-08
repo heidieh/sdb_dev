@@ -113,6 +113,12 @@
 	.dc-chart .pie-slice {
 	    fill: black;
 	}
+	.dc-chart .pie-slice :hover { 
+	    stroke: #808080;
+	    stroke-width: 2;
+		fill-opacity: 0.8; 
+	}
+
 	.dc-chart g.row text {
 	    fill: black;
 	}
@@ -127,6 +133,13 @@
 	.bar{
 		width: 0.3rem;
 	}
+	.pie-tooltip {
+		position: absolute;
+		background-color: transparent;
+		margin-left: 53px;
+		margin-top: 73px;
+	}
+
 
 </style>
 </head>
@@ -144,6 +157,7 @@
 	    </div>
 	    <div id='dc-result-chart'>
 	    	<p class='instruction'>Cliquez pour sélectionner les résultat:</p>
+	    	<div class="pie-tooltip"></div>
 	    </div>
 	</div>
 

@@ -1140,7 +1140,7 @@ function createCharts(data) {
 
 	//ROW CHART - TEAMS
   	teamChart.width(260)
-	    .height(160)
+	    .height(170)
 	    //.margins({top: 5, left: 10, right: 10, bottom: 40})
 	    .dimension(teamDim)
 	    .group(teamGroup)
@@ -1160,7 +1160,6 @@ function createCharts(data) {
 	    .height(160)
 	    .x(d3.scaleTime().domain(dateExtentPlus))
 	    .yAxisLabel("Nombre de Réponses")
-	    //.clipPadding(10)
 	    .dimension(dateDim)
 	    .group(dateGroup)
 	    .compose([
@@ -1169,42 +1168,34 @@ function createCharts(data) {
 	            .group(dateGroup)
 	            .valueAccessor(function (d) {return d.value; })
 	            .ordinalColors(['#c58cc5'])
-	            //.barPadding(1)
-	            //.round(d3.time.day.round)
-			    // define x axis units
-			    //.xUnits(d3.time.days)
-			    // (optional) whether bar should be center to its x value, :default=false
-			    //.centerBar(true)
-			    //.barPadding(15)
-			    //.outerPadding(14)
-			    // (optional) set gap between bars manually in px, :default=2
-			    //.barGap(1)
-			    //.gap(1)
 	    ]);
-
 
 	resultChart
 	    .width(295)
 	    .height(160)
-	    .cx(60)
+	    .cx(62)
 	    .cy(80)
 	    .radius(60)
-	    .innerRadius(10)
+	    .innerRadius(14)
 	    .ordinalColors(['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f','#e5c494','#b3b3b3'])
 	    .dimension(resultDim)
 	    .group(resultGroup) 
 	    .renderLabel(false)
-	    /*.label(function (d) {
-	        //console.log(d);
-	        if (d.key=='X') {
-	        	return 'X (pas connu)';
-	        } else {
-	        	return d.key;
-	        }
-	        
+	    /*.label(function (d) {  
+	        var perc = Math.round((d.value/currentData.length)*100);
+	        console.log(d.value, currentData.length, perc + '%');
+	        return perc + '%';
 	    })*/
-	    .legend(dc.legend().x(130).y(40).itemHeight(13).gap(2));
-
+	    .legend(dc.legend().x(130).y(45).itemHeight(13).gap(2))
+		.on('renderlet', function(chart) { 
+			chart.selectAll('g.pie-slice') 
+				.on('mouseover', function(d) { 
+					chart.select('.pie-tooltip').text(dc.utils.printSingleValue(Math.round((d.endAngle - d.startAngle) / (2*Math.PI) * 100)) + '%'); //d.data.value); 
+				}) 
+				.on('mouseout', function(d) { 
+					chart.select('.pie-tooltip').text(''); 
+				}); 
+		});
 
 
 	dc.renderAll();
@@ -1213,8 +1204,9 @@ function createCharts(data) {
         .append("text")
         //.attr("class", "x-axis-label")
         .attr("text-anchor", "middle")
-        .attr("x", teamChart.width()/2)
-        .attr("y", teamChart.height()-6)
+        .attr("font-size", "12px")
+        .attr("x", 130)
+        .attr("y", 168)
         .text('Nombre de Réponses');
 
 
